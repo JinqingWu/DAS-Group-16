@@ -1,8 +1,203 @@
 ---
-title: "DAS Group 16 - Data Analysis"
-author: "Group 16"
+title: "Generalized Linear Model Analysis of Animal Shelter Stay Duration"
+author: "Group Number: 16"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  revealjs:
+    
+    auto-stretch: false
+  pdf: 
+    fig-pos: "H"
+    dev: pdf  
+    fig-format: pdf
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: true
+  eval: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: libraries
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+---
+title: "Analysis of Factors Influencing Animal Shelter Stay Duration"
+author: "DAS Group 16"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Introduction
+
+This analysis focuses on understanding the factors that influence the duration of an animal's stay at the **Dallas Animal Shelter** before reaching its final outcome. The dataset assigned to our group contains records of animals admitted to the shelter, including key characteristics and details about their stay.
+
+The dataset consists of the following variables:
+
+-   **Animal_type**: The type of animal admitted to the shelter (e.g., dog, cat).
+-   **Month**: The month the animal was admitted (numerically coded, January = 1, February = 2, etc.).
+-   **Year**: The year the animal was admitted.
+-   **Intake_type**: The reason for the animal's admission (e.g., stray, owner surrender, confiscation).
+-   **Outcome_type**: The final recorded outcome of the admitted animal (e.g., adoption, return to owner, euthanasia).
+-   **Chip_Status**: Whether the animal had a microchip with owner information at the time of admission.
+-   **Time_at_Shelter**: The number of days the animal spent in the shelter before a final outcome was determined.
+
+The goal of this study is to analyze the impact of these factors on **Time_at_Shelter** using **Generalized Linear Models (GLM)**. By understanding which variables contribute to longer or shorter stays, we aim to provide insights that could help optimize shelter operations and improve animal welfare outcomes.
+
+# Data Import
+
+```{r}
+
+# Read Data
+animal <- read.csv("/Users/wujinqing/Downloads/dataset16.csv")
+
+# View the data overview
+str(animal)
+```
+
+# Exploratory Data Analysis (EDA)
+
+## Distribution of Time at Shelter
+
+```{r time-shelter-distribution}
+# Histogram of time_at_shelter
+animal %>%
+  ggplot(aes(x = time_at_shelter)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Time Spent at the Shelter",
+       x = "Days at Shelter",
+       y = "Count") +
+  theme_minimal()
+```
+
+· The distribution of Time_at_Shelter tends to be short-term, and most animals stay in shelters for a short time.
+
+· Right-sided distribution, indicating that most animals will have final results quickly, but there are still some animals that stay longer.
+
+· The KDE curve shows partial peaks, and there may be some key factors that affect residence time.
+
+## Time at Shelter by Animal Type
+
+```{r time-by-animal-type}
+# Boxplot of time_at_shelter by Animal_type
+animal %>%
+  ggplot(aes(x = animal_type, y = time_at_shelter, fill = animal_type)) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Animal Type",
+       x = "Animal Type",
+       y = "Days at Shelter") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+· The residence time of different animal types (Animal_type) varies greatly:
+
+· The median was significantly higher for certain animal types, indicating that they spent more time in shelters.
+
+· Possible explanations: Certain animal types are more likely to be adopted or find owners more easily.
+
+## Time at Shelter by Intake Type
+
+```{r time-by-intake-type}
+# Boxplot of Time_at_Shelter by Intake_type
+animal %>%
+  ggplot(aes(x = intake_type, y = time_at_shelter, fill = intake_type)) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Intake Type",
+       x = "Intake Type",
+       y = "Days at Shelter") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+· Reason of entry (Intake_type) has significant influence on Time_at_Shelter:
+
+· Animals with certain entry reasons stay longer, such as abandonment or medical reasons.
+
+· Animals that come in for other reasons may find their way faster, such as animals that come in because their owners are looking for them may leave faster.
+
+## Time at Shelter by Outcome Type
+
+```{r time-by-outcome-type}
+# Boxplot of Time_at_Shelter by Outcome_type
+animal %>%
+  ggplot(aes(x = outcome_type, y = time_at_shelter, fill = outcome_type)) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Outcome Type",
+       x = "Outcome Type",
+       y = "Days at Shelter") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+· The distribution of Time_at_Shelter tends to be short-term, and most animals stay in shelters for a short time.
+
+· Right-sided distribution, indicating that most animals will have final results quickly, but there are still some animals that stay longer.
+
+· The KDE curve shows partial peaks, and there may be some key factors that affect residence time.
+
+## Time at Shelter by Chip Status
+
+```{r time-by-chip-status}
+# Boxplot of Time_at_Shelter by Chip_Status
+animal %>%
+  ggplot(aes(x = chip_status, y = time_at_shelter, fill = chip_status)) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Microchip Status",
+       x = "Microchip Status",
+       y = "Days at Shelter") +
+  theme_minimal()
+```
+
+· Chip_Status has an effect on Time_at_Shelter:
+
+· Animals with chips tend to stay shorter, possibly because the chip information helps find the owner faster.
+
+· Animals without chips may be more dependent on shelter arrangements, resulting in longer stays.
+
+## Time at Shelter by Year
+
+```{r time-by-year}
+# Boxplot of Time_at_Shelter by Year
+animal %>%
+  ggplot(aes(x = as.factor(year), y = time_at_shelter, fill = as.factor(year))) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Year",
+       x = "Year",
+       y = "Days at Shelter") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+· Year affects Time_at_Shelter:
+
+· The median varies from year to year and may be affected by policy or how shelters are managed.
+
+· In recent years, there may have been more efficient ways to relocate, so that the length of stay has fallen.
+
+## Time at Shelter by Month
+
+```{r time-by-month}
+# Boxplot of Time_at_Shelter by Month
+animal %>%
+  ggplot(aes(x = as.factor(month), y = time_at_shelter, fill = as.factor(month))) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Month",
+       x = "Month",
+       y = "Days at Shelter") +
+  theme_minimal()
+```
+
+· Month (Month) has an effect on Time_at_Shelter:
+
+· Longer stays may occur in certain months (such as summer and winter), which may be related to seasonal adoption trends or changes in stray animal populations.
+
+· Further analysis can be combined with weather, holidays and other factors to explore deeper causes.

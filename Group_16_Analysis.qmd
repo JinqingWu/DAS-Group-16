@@ -57,7 +57,7 @@ The goal of this study is to analyze the impact of these factors on **Time_at_Sh
 ```{r}
 
 # Read Data
-animal <- read.csv("/Users/wujinqing/Downloads/dataset16.csv")
+animal <- read.csv("C:/Users/丁乐之2024/OneDrive/Documents/dataset16.csv")
 
 # View the data overview
 str(animal)
@@ -201,3 +201,74 @@ animal %>%
 · Longer stays may occur in certain months (such as summer and winter), which may be related to seasonal adoption trends or changes in stray animal populations.
 
 · Further analysis can be combined with weather, holidays and other factors to explore deeper causes.
+
+## Here we preform GLM analysis
+
+```{r}
+library(tidyverse)
+library(moderndive)
+library(gapminder)
+library(sjPlot)
+library(stats)
+library(jtools)
+library(janitor)
+
+```
+
+# data summary description
+
+```{r}
+
+animal$animal_type<-as.factor(animal$animal_type)
+animal$month<-as.factor(animal$month)
+animal$year<-as.factor(animal$year)
+animal$intake_type<-as.factor(animal$intake_type)
+animal$outcome_type<-as.factor(animal$outcome_type)
+animal$chip_status<-as.factor(animal$chip_status)
+animal$time_at_shelter<-as.factor(animal$time_at_shelter)
+
+animal %>%
+  tabyl(intake_type,time_at_shelter) %>%
+  adorn_percentages() %>%
+  adorn_pct_formatting() %>%
+  adorn_ns() # To show original counts
+
+ggplot(data = animal, aes(x = time_at_shelter, group = intake_type)) +
+ geom_bar(aes(y = ..prop.., fill = time_at_shelter),
+ stat = "count", position = "dodge") +
+ labs(x = "number of days an animal spends in the shelter ", y = "intake_type")
+
+```
+
+# build model and fitted data
+
+```{r}
+ model.time_at_shelter <- glm(time_at_shelter ~ animal_type + month + year + intake_type+ outcome_type+chip_status, data = animal,
+ family = binomial(link = "logit"))
+ model.time_at_shelter %>%
+ summary()
+```
+
+# Odds of animals surviving over the number of day.
+
+```{r}
+ plot_model(model.time_at_shelter, show.values = TRUE,
+ title = "", show.p = FALSE, value.offset = 0.25)
+
+
+ 
+```
+
+# probability of number of days an animal spends in the shelter.
+
+```{r}
+model.time_at_shelter.coef.logodds <- model.time_at_shelter %>%
+                            summary() %>%
+                            coef()
+plogis(model.time_at_shelter.coef.logodds["(Intercept)", "Estimate"])
+
+
+```
+
+
+

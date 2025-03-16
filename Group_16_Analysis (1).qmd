@@ -1,0 +1,572 @@
+---
+title: "Generalized Linear Model Analysis of Animal Shelter Stay Duration"
+author: "Group Number: 16"
+number-sections: true
+format: 
+  html:
+    embed-resources: true
+    code-tools: true
+  revealjs:
+    
+    auto-stretch: false
+  pdf: 
+    fig-pos: "H"
+    dev: pdf  
+    fig-format: pdf
+editor_options: 
+  chunk_output_type: console
+execute:
+  echo: true
+  eval: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: libraries
+library(dplyr)
+library(ggplot2)
+library(readr)
+```
+
+---
+title: "Analysis of Factors Influencing Animal Shelter Stay Duration"
+author: "DAS Group 16"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# Introduction
+
+This analysis focuses on understanding the factors that influence the duration of an animal's stay at the **Dallas Animal Shelter** before reaching its final outcome. The dataset assigned to our group contains records of animals admitted to the shelter, including key characteristics and details about their stay.
+
+The dataset consists of the following variables:
+
+-   **Animal_type**: The type of animal admitted to the shelter (e.g., dog, cat).
+-   **Month**: The month the animal was admitted (numerically coded, January = 1, February = 2, etc.).
+-   **Year**: The year the animal was admitted.
+-   **Intake_type**: The reason for the animal's admission (e.g., stray, owner surrender, confiscation).
+-   **Outcome_type**: The final recorded outcome of the admitted animal (e.g., adoption, return to owner, euthanasia).
+-   **Chip_Status**: Whether the animal had a microchip with owner information at the time of admission.
+-   **Time_at_Shelter**: The number of days the animal spent in the shelter before a final outcome was determined.
+
+The goal of this study is to analyze the impact of these factors on **Time_at_Shelter** using **Generalized Linear Models (GLM)**. By understanding which variables contribute to longer or shorter stays, we aim to provide insights that could help optimize shelter operations and improve animal welfare outcomes.
+
+# Data Import
+
+```{r}
+
+# Read Data
+df <- read.csv("D:/Github/dataset16.csv")
+
+# View the data overview
+str(df)
+```
+
+# Exploratory Data Analysis (EDA)
+
+## Distribution of Time at Shelter
+
+```{r time-shelter-distribution}
+# Histogram of time_at_shelter
+df %>%
+  ggplot(aes(x = time_at_shelter)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "black", alpha = 0.7) +
+  labs(title = "Distribution of Time Spent at the Shelter",
+       x = "Days at Shelter",
+       y = "Count") +
+  theme_minimal()
+```
+
+· The distribution of Time_at_Shelter tends to be short-term, and most animals stay in shelters for a short time.
+
+· Right-sided distribution, indicating that most animals will have final results quickly, but there are still some animals that stay longer.
+
+· The KDE curve shows partial peaks, and there may be some key factors that affect residence time.
+
+## Time at Shelter by Animal Type
+
+```{r time-by-animal-type}
+# Boxplot of time_at_shelter by Animal_type
+df %>%
+  ggplot(aes(x = animal_type, y = time_at_shelter, fill = animal_type)) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Animal Type",
+       x = "Animal Type",
+       y = "Days at Shelter") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+· The residence time of different animal types (Animal_type) varies greatly:
+
+· The median was significantly higher for certain animal types, indicating that they spent more time in shelters.
+
+· Possible explanations: Certain animal types are more likely to be adopted or find owners more easily.
+
+## Time at Shelter by Intake Type
+
+```{r time-by-intake-type}
+# Boxplot of Time_at_Shelter by Intake_type
+df %>%
+  ggplot(aes(x = intake_type, y = time_at_shelter, fill = intake_type)) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Intake Type",
+       x = "Intake Type",
+       y = "Days at Shelter") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+· Reason of entry (Intake_type) has significant influence on Time_at_Shelter:
+
+· Animals with certain entry reasons stay longer, such as abandonment or medical reasons.
+
+· Animals that come in for other reasons may find their way faster, such as animals that come in because their owners are looking for them may leave faster.
+
+## Time at Shelter by Outcome Type
+
+```{r time-by-outcome-type}
+# Boxplot of Time_at_Shelter by Outcome_type
+df %>%
+  ggplot(aes(x = outcome_type, y = time_at_shelter, fill = outcome_type)) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Outcome Type",
+       x = "Outcome Type",
+       y = "Days at Shelter") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+· The distribution of Time_at_Shelter tends to be short-term, and most animals stay in shelters for a short time.
+
+· Right-sided distribution, indicating that most animals will have final results quickly, but there are still some animals that stay longer.
+
+· The KDE curve shows partial peaks, and there may be some key factors that affect residence time.
+
+## Time at Shelter by Chip Status
+
+```{r time-by-chip-status}
+# Boxplot of Time_at_Shelter by Chip_Status
+df %>%
+  ggplot(aes(x = chip_status, y = time_at_shelter, fill = chip_status)) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Microchip Status",
+       x = "Microchip Status",
+       y = "Days at Shelter") +
+  theme_minimal()
+```
+
+· Chip_Status has an effect on Time_at_Shelter:
+
+· Animals with chips tend to stay shorter, possibly because the chip information helps find the owner faster.
+
+· Animals without chips may be more dependent on shelter arrangements, resulting in longer stays.
+
+## Time at Shelter by Year
+
+```{r time-by-year}
+# Boxplot of Time_at_Shelter by Year
+df %>%
+  ggplot(aes(x = as.factor(year), y = time_at_shelter, fill = as.factor(year))) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Year",
+       x = "Year",
+       y = "Days at Shelter") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+· Year affects Time_at_Shelter:
+
+· The median varies from year to year and may be affected by policy or how shelters are managed.
+
+· In recent years, there may have been more efficient ways to relocate, so that the length of stay has fallen.
+
+## Time at Shelter by Month
+
+```{r time-by-month}
+# Boxplot of Time_at_Shelter by Month
+df %>%
+  ggplot(aes(x = as.factor(month), y = time_at_shelter, fill = as.factor(month))) +
+  geom_boxplot() +
+  labs(title = "Time at Shelter by Month",
+       x = "Month",
+       y = "Days at Shelter") +
+  theme_minimal()
+```
+
+· Month (Month) has an effect on Time_at_Shelter:
+
+· Longer stays may occur in certain months (such as summer and winter), which may be related to seasonal adoption trends or changes in stray animal populations.
+
+· Further analysis can be combined with weather, holidays and other factors to explore deeper causes.
+
+## Here we preform GLM analysis
+
+```{r}
+library(tidyverse)
+library(moderndive)
+library(gapminder)
+library(sjPlot)
+library(stats)
+library(jtools)
+library(janitor)
+
+```
+
+# data summary description
+
+```{r}
+
+df$animal_type<-as.factor(df$animal_type)
+df$month<-as.factor(df$month)
+df$year<-as.factor(df$year)
+df$intake_type<-as.factor(df$intake_type)
+df$outcome_type<-as.factor(df$outcome_type)
+df$chip_status<-as.factor(df$chip_status)
+df$time_at_shelter<-as.factor(df$time_at_shelter)
+
+df %>%
+  tabyl(intake_type,time_at_shelter) %>%
+  adorn_percentages() %>%
+  adorn_pct_formatting() %>%
+  adorn_ns() # To show original counts
+
+ggplot(data = df, aes(x = time_at_shelter, group = intake_type)) +
+ geom_bar(aes(y = ..prop.., fill = time_at_shelter),
+ stat = "count", position = "dodge") +
+ labs(x = "number of days an animal spends in the shelter ", y = "intake_type")
+
+```
+
+# build model and fitted data
+
+```{r}
+ model.time_at_shelter <- glm(time_at_shelter ~ animal_type + month + year + intake_type+ outcome_type+chip_status, data = df,
+ family = binomial(link = "logit"))
+ model.time_at_shelter %>%
+ summary()
+```
+
+# Odds of animals surviving over the number of day.
+
+```{r}
+ plot_model(model.time_at_shelter, show.values = TRUE,
+ title = "", show.p = FALSE, value.offset = 0.25)
+
+
+ 
+```
+
+# probability of number of days an animal spends in the shelter.
+
+```{r}
+model.time_at_shelter.coef.logodds <- model.time_at_shelter %>%
+                            summary() %>%
+                            coef()
+plogis(model.time_at_shelter.coef.logodds["(Intercept)", "Estimate"])
+
+
+```
+
+# Data Preparation
+
+```{r}
+# Convert categorical variables
+df <- df %>%
+  mutate(
+    animal_type = as.factor(animal_type),
+    intake_type = as.factor(intake_type),
+    outcome_type = as.factor(outcome_type),
+    chip_status = as.factor(chip_status)
+  )
+
+```
+
+# Numerical Summary
+
+In this section, we present descriptive statistics to help understand the structure of the dataset and identify early trends related to shelter time. These summaries serve as the foundation for our model-building process.
+
+## Summary of All Variables
+
+We begin with a full summary of all variables, including numerical and categorical ones.
+
+```{r}
+library(gt)
+
+summary_df <- summary(df)
+summary_df %>% as.data.frame() %>%
+  gt(rownames_to_stub = TRUE) %>%
+  tab_header(title = "Summary of Dataset Variables")
+
+```
+
+This table provides an overview of all variables in the dataset, including distributional statistics (e.g., min, max, mean) for numeric variables, and level frequencies for categorical variables.
+
+## Count of Animal Types
+
+This table shows how many animals of each type were admitted to the shelter.
+
+```{r}
+df %>%
+  count(animal_type, name = "Count") %>%
+  gt() %>%
+  tab_header(title = "Number of Animals by Type")
+```
+
+This reveals the distribution of animal types. An imbalance in these counts could influence the model’s fairness or predictive strength.
+
+## Average Days at Shelter by Chip Status
+
+We compute average and median shelter times based on microchip status, which may indicate whether the animal can be quickly returned to an owner.
+
+```{r}
+df$time_at_shelter <- as.numeric(as.character(df$time_at_shelter))
+```
+
+```{r}
+df %>%
+  group_by(chip_status) %>%
+  summarise(
+    Count = n(),
+    Mean_Days = round(mean(time_at_shelter), 2),
+    Median_Days = median(time_at_shelter)
+  ) %>%
+  gt() %>%
+  tab_header(title = "Shelter Time by Chip Status")
+
+
+
+```
+
+Animals with a readable chip tend to be identified and returned faster. This table helps explore if chip presence is associated with reduced shelter time.
+
+## Average Days at Shelter by Outcome Type
+
+Outcome type likely plays a major role in determining how long an animal stays in the shelter.
+
+```{r}
+df %>%
+  group_by(outcome_type) %>%
+  summarise(
+    Count = n(),
+    Mean_Days = round(mean(time_at_shelter), 2)
+  ) %>%
+  gt() %>%
+  tab_header(title = "Shelter Time by Outcome Type")
+
+```
+
+For example, animals returned to owners tend to have shorter stays, while those put up for adoption may remain longer. This provides early insights into patterns we expect to confirm in the GLM.
+
+## Generalized Linear Model(GLM)
+
+We use a Generalized Linear Model (GLM) to investigate how different predictors influence the number of days an animal spends in the shelter.
+
+## Poisson GLM
+
+```{r}
+glm_pois <- glm(time_at_shelter ~ animal_type + month + year +
+                intake_type + outcome_type + chip_status,
+                data = df,
+                family = poisson)
+
+summary(glm_pois)
+
+```
+
+Many variables such as intake type, chip status, and outcome type show strong significance. This supports our assumption that these factors influence shelter time.
+
+## Confidence Intervals & Exponentiated Coefficients
+
+```{r}
+confint(glm_pois)
+exp(coef(glm_pois))
+```
+
+Exponentiated coefficients represent rate ratios. For instance, a value of 0.80 indicates a 20% shorter shelter stay relative to baseline.
+
+## Negative Binomial Model
+
+If overdispersion is suspected (variance \> mean), we can try a negative binomial GLM.
+
+```{r}
+library(MASS)
+
+glm_nb <- glm.nb(time_at_shelter ~ animal_type + month + year +
+                 intake_type + outcome_type + chip_status,
+                 data = df)
+
+summary(glm_nb)
+
+```
+
+This model shows that variables like `intake_type`, `chip_status`, and `outcome_type` have significant effects on the number of days animals stay in the shelter. The model's AIC is much lower than the Poisson model, confirming a better fit.
+
+## Model Comparison: Poisson vs Negative Binomial
+
+Initially, we used a Poisson GLM to model the count of days spent in the shelter. However, the residual deviance and AIC values were very high, suggesting poor model fit.
+
+We then fitted a Negative Binomial model, which allows for overdispersion (i.e., variance \> mean). The AIC dropped significantly (from 12222 to 7985), and residual deviance also improved dramatically.
+
+Thus, the Negative Binomial model provides a better fit for our data and will be used for further interpretation.
+
+```{r}
+df$month <- as.numeric(as.character(df$month))
+
+```
+
+```{r}
+df$season <- cut(df$month,
+                 breaks = c(0, 3, 6, 9, 12),
+                 labels = c("Winter", "Spring", "Summer", "Fall"),
+                 include.lowest = TRUE)
+df$season <- as.factor(df$season)
+
+
+# Negative Binomial with season
+library(MASS)
+nb_season <- glm.nb(time_at_shelter ~ season + year + animal_type + intake_type + outcome_type + chip_status,
+                    data = df)
+
+AIC(glm_nb, nb_season)
+summary(nb_season)
+
+```
+
+## Model Comparison Table
+
+To compare different versions of the model, we use AIC as a benchmark.
+
+```{r}
+nb_model_season <- glm.nb(time_at_shelter ~ season + year + animal_type + intake_type + outcome_type + chip_status, data = df)
+nb_model_interact <- glm.nb(time_at_shelter ~ animal_type * intake_type + year + outcome_type + chip_status, data = df)
+
+AIC(glm_nb, nb_model_season, nb_model_interact)
+```
+
+The table above compares models with and without seasonal effects and interaction terms. Lower AIC values indicate better model fit.
+
+## Significant Variables in Each Model
+
+```{r}
+# Extract p-values into named dataframes
+extract_named_pvals <- function(model, name) {
+  pvals <- summary(model)$coefficients[, 4]
+  df <- data.frame(Variable = names(pvals), pval = round(pvals, 4))
+  df <- setNames(df, c("Variable", name))  # rename second column
+  return(df)
+}
+
+# Get dataframes for each model
+pval_base <- extract_named_pvals(glm_nb, "NB_Base")
+pval_season <- extract_named_pvals(nb_model_season, "NB_Season")
+pval_interact <- extract_named_pvals(nb_model_interact, "NB_Interaction")
+
+# Merge by Variable name
+library(dplyr)
+pval_table <- full_join(pval_base, pval_season, by = "Variable") %>%
+              full_join(pval_interact, by = "Variable")
+
+# Display using gt
+library(gt)
+pval_table %>%
+  gt() %>%
+  tab_header(title = "P-values of Predictors Across Models")
+
+```
+
+The table above shows the p-values of each predictor across different negative binomial models. Bold or small p-values indicate stronger statistical significance. This helps assess consistency of predictor effects across model specifications.
+
+## Interaction Terms: Animal Type × Intake Type
+
+We test whether there is a combined effect between the type of animal and the reason it was admitted.
+
+```{r}
+summary(nb_model_interact)
+```
+
+The interaction terms help us understand whether, for example, stray dogs behave differently from stray cats in terms of shelter time.
+
+## Residual Plot (Model Diagnostics)
+
+We check the residuals to determine whether the model is well-behaved.
+
+```{r}
+plot(glm_nb$fitted.values, residuals(glm_nb, type = "pearson"),
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values", ylab = "Pearson Residuals")
+abline(h = 0, col = "red")
+```
+
+Ideally, residuals should be randomly scattered around 0 without any clear pattern. Any systematic pattern may indicate model misfit.
+
+## Model Interpretation
+
+```{r}
+# Confidence intervals
+confint(glm_nb)
+
+# Exponentiated coefficients
+exp(coef(glm_nb))
+```
+
+## Model Comparison Summary
+
+We compare three versions of the Negative Binomial model to evaluate which provides the best fit while maintaining interpretability.
+
+```{r}
+# Build comparison table
+model_names <- c("Base NB Model", "NB + Season", "NB + Interaction")
+model_list <- list(glm_nb, nb_model_season, nb_model_interact)
+
+aic_values <- sapply(model_list, AIC)
+df_values <- sapply(model_list, function(m) length(coef(m)))
+
+comparison_table <- data.frame(
+  Model = model_names,
+  AIC = round(aic_values, 2),
+  Num_Coefficients = df_values
+)
+
+library(gt)
+comparison_table %>%
+  gt() %>%
+  tab_header(
+    title = "Model Comparison: Negative Binomial Variants"
+  )
+
+
+```
+
+This table shows that adding interaction terms improves model fit (lowest AIC), though at the cost of increased complexity. The seasonal model provides a small improvement in AIC but may enhance interpretability.
+
+## Model Fit: Predicted vs Actual Values
+
+To assess the model fit, we compare predicted values from the Negative Binomial model to the actual observed shelter time.
+
+```{r}
+# Generate predicted values
+df$predicted <- predict(glm_nb, type = "response")
+
+# Plot predicted vs actual
+library(ggplot2)
+ggplot(df, aes(x = predicted, y = time_at_shelter)) +
+  geom_point(alpha = 0.4, color = "steelblue") +
+  geom_smooth(method = "lm", color = "red") +
+  labs(
+    title = "Predicted vs Actual Days in Shelter (Negative Binomial)",
+    x = "Predicted Shelter Time",
+    y = "Actual Shelter Time"
+  ) +
+  theme_minimal()
+```
+
+The scatter plot compares the predicted shelter stay durations from the Negative Binomial model with the actual observed durations.
+
+Most points cluster in the lower-left region, indicating that the majority of animals have relatively short stays, which is consistent with the summary statistics.
+
+The red trend line shows a positive linear relationship, meaning the model's predictions generally align with the trend of the actual values.
+
+However, there is visible variance and some underestimation for animals with longer stays. These outliers suggest that the model does not fully capture factors influencing extreme cases, which could be addressed in future modeling.

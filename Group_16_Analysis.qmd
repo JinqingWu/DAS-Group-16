@@ -270,8 +270,9 @@ plogis(model.time_at_shelter.coef.logodds["(Intercept)", "Estimate"])
 
 ```
 
-We preformed binomial GLM analysis in the last section, but since the response variable" time_at_shelter" is a numerical variable, using binomial model 
-may not be appropriate here. So we tried to fit the data by using poisson and negative binomial models in the following section. 
+We preformed binomial GLM analysis in the last section, but since the response variable" time_at_shelter" is a numerical variable, using 
+binomial model which is used to fit the categorical variable may not be appropriate here. So we tried to fit the data by using poisson and 
+negative binomial models in the following section. 
 
 # Data Preparation
 

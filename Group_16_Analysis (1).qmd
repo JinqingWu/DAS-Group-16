@@ -240,36 +240,6 @@ ggplot(data = df, aes(x = time_at_shelter, group = intake_type)) +
 
 ```
 
-# build model and fitted data
-
-```{r}
- model.time_at_shelter <- glm(time_at_shelter ~ animal_type + month + year + intake_type+ outcome_type+chip_status, data = df,
- family = binomial(link = "logit"))
- model.time_at_shelter %>%
- summary()
-```
-
-# Odds of animals surviving over the number of day.
-
-```{r}
- plot_model(model.time_at_shelter, show.values = TRUE,
- title = "", show.p = FALSE, value.offset = 0.25)
-
-
- 
-```
-
-# probability of number of days an animal spends in the shelter.
-
-```{r}
-model.time_at_shelter.coef.logodds <- model.time_at_shelter %>%
-                            summary() %>%
-                            coef()
-plogis(model.time_at_shelter.coef.logodds["(Intercept)", "Estimate"])
-
-
-```
-
 # Data Preparation
 
 ```{r}
@@ -398,6 +368,7 @@ glm_nb <- glm.nb(time_at_shelter ~ animal_type + month + year +
                  intake_type + outcome_type + chip_status,
                  data = df)
 
+
 summary(glm_nb)
 
 ```
@@ -441,76 +412,13 @@ To compare different versions of the model, we use AIC as a benchmark.
 
 ```{r}
 nb_model_season <- glm.nb(time_at_shelter ~ season + year + animal_type + intake_type + outcome_type + chip_status, data = df)
-nb_model_interact <- glm.nb(time_at_shelter ~ animal_type * intake_type + year + outcome_type + chip_status, data = df)
+nb_model_interact1 <- glm.nb(time_at_shelter ~ animal_type * intake_type + year + outcome_type + chip_status, data = df)
 
-AIC(glm_nb, nb_model_season, nb_model_interact)
+
+AIC(glm_nb, nb_model_season, nb_model_interact1)
 ```
 
 The table above compares models with and without seasonal effects and interaction terms. Lower AIC values indicate better model fit.
-
-## Significant Variables in Each Model
-
-```{r}
-# Extract p-values into named dataframes
-extract_named_pvals <- function(model, name) {
-  pvals <- summary(model)$coefficients[, 4]
-  df <- data.frame(Variable = names(pvals), pval = round(pvals, 4))
-  df <- setNames(df, c("Variable", name))  # rename second column
-  return(df)
-}
-
-# Get dataframes for each model
-pval_base <- extract_named_pvals(glm_nb, "NB_Base")
-pval_season <- extract_named_pvals(nb_model_season, "NB_Season")
-pval_interact <- extract_named_pvals(nb_model_interact, "NB_Interaction")
-
-# Merge by Variable name
-library(dplyr)
-pval_table <- full_join(pval_base, pval_season, by = "Variable") %>%
-              full_join(pval_interact, by = "Variable")
-
-# Display using gt
-library(gt)
-pval_table %>%
-  gt() %>%
-  tab_header(title = "P-values of Predictors Across Models")
-
-```
-
-The table above shows the p-values of each predictor across different negative binomial models. Bold or small p-values indicate stronger statistical significance. This helps assess consistency of predictor effects across model specifications.
-
-## Interaction Terms: Animal Type × Intake Type
-
-We test whether there is a combined effect between the type of animal and the reason it was admitted.
-
-```{r}
-summary(nb_model_interact)
-```
-
-The interaction terms help us understand whether, for example, stray dogs behave differently from stray cats in terms of shelter time.
-
-## Residual Plot (Model Diagnostics)
-
-We check the residuals to determine whether the model is well-behaved.
-
-```{r}
-plot(glm_nb$fitted.values, residuals(glm_nb, type = "pearson"),
-     main = "Residuals vs Fitted Values",
-     xlab = "Fitted Values", ylab = "Pearson Residuals")
-abline(h = 0, col = "red")
-```
-
-Ideally, residuals should be randomly scattered around 0 without any clear pattern. Any systematic pattern may indicate model misfit.
-
-## Model Interpretation
-
-```{r}
-# Confidence intervals
-confint(glm_nb)
-
-# Exponentiated coefficients
-exp(coef(glm_nb))
-```
 
 ## Model Comparison Summary
 
@@ -519,7 +427,7 @@ We compare three versions of the Negative Binomial model to evaluate which provi
 ```{r}
 # Build comparison table
 model_names <- c("Base NB Model", "NB + Season", "NB + Interaction")
-model_list <- list(glm_nb, nb_model_season, nb_model_interact)
+model_list <- list(glm_nb, nb_model_season, nb_model_interact1)
 
 aic_values <- sapply(model_list, AIC)
 df_values <- sapply(model_list, function(m) length(coef(m)))
@@ -540,7 +448,148 @@ comparison_table %>%
 
 ```
 
-This table shows that adding interaction terms improves model fit (lowest AIC), though at the cost of increased complexity. The seasonal model provides a small improvement in AIC but may enhance interpretability.
+Although the model with interaction terms achieved a slightly lower AIC (7973.82), the difference compared to the base model (7984.90) is relatively small and not practically significant.
+
+Given this, and in the interest of maintaining a simpler and more interpretable model, we selected the original Negative Binomial model as our final model.
+
+
+### Interaction Effects
+
+We explored several theoretically plausible interaction effects, including:
+
+1.  `intake_type * outcome_type`
+2.  `animal_type * chip_status`
+3.  `chip_status * outcome_type`
+
+These interactions were tested individually using Negative Binomial models and compared to the main effects model using AIC. In all cases, the interaction terms did not significantly improve model fit and in some instances increased the AIC.
+
+As a result, we decided not to include interaction terms in the final model to maintain simplicity and interpretability.
+
+## Significant Variables
+
+The table below displays the p-values for each predictor included in the Negative Binomial model. Significance levels are indicated with stars.
+
+This allows us to assess which variables are most strongly associated with shelter stay duration.
+
+```{r}
+# Load packages
+library(dplyr)
+library(gt)
+
+# Function: extract and label p-values from model
+extract_pvals_with_stars <- function(model) {
+  pvals <- summary(model)$coefficients[, 4]  # extract p-values
+  df <- data.frame(
+    Variable = names(pvals),
+    pval = round(pvals, 4)
+  )
+  
+  # Add significance stars
+  df$Significance <- cut(df$pval,
+                         breaks = c(-Inf, 0.001, 0.01, 0.05, Inf),
+                         labels = c("***", "**", "*", ""),
+                         right = FALSE)
+  
+  # Create formatted display column
+  df$P_value <- paste0(df$pval, " ", df$Significance)
+  
+  return(df)
+}
+
+# Apply function to your model
+pval_df <- extract_pvals_with_stars(glm_nb)
+
+
+# Display the results using gt
+pval_df_subset <- pval_df[, c("Variable", "P_value")]
+
+library(gt)
+pval_df_subset %>%
+  gt() %>%
+  tab_header(title = "P-values with Significance Levels (Negative Binomial Model)")
+
+
+```
+
+## Residual Plot (Model Diagnostics)
+
+We check the residuals to determine whether the model is well-behaved.
+
+```{r}
+plot(glm_nb$fitted.values, residuals(glm_nb, type = "pearson"),
+     main = "Residuals vs Fitted Values",
+     xlab = "Fitted Values", ylab = "Pearson Residuals")
+abline(h = 0, col = "red")
+```
+
+Ideally, residuals should be randomly scattered around 0 without any clear pattern. Any systematic pattern may indicate model misfit.
+
+To assess the adequacy of the model, we generated several diagnostic plots:
+
+-   **Pearson and deviance residual plots** to evaluate model fit and detect systematic patterns.
+-   **QQ plot of residuals** to check for normality assumptions.
+-   **Cook’s Distance** to identify influential data points.
+
+These visual diagnostics help ensure the validity of model assumptions and highlight areas where the model may be improved.
+
+```{r}
+plot(glm_nb$fitted.values,
+     residuals(glm_nb, type = "deviance"),
+     main = "Deviance Residuals vs Fitted Values",
+     xlab = "Fitted Values", ylab = "Deviance Residuals")
+abline(h = 0, col = "blue")
+
+```
+
+The deviance residuals versus fitted values plot shows that most residuals are centered around zero without a strong systematic pattern. This suggests that the model fits the data reasonably well.
+
+A few larger residuals are observed, which may indicate the presence of outliers or influential observations. Additionally, there is some minor funneling in the lower fitted values, hinting at potential heteroscedasticity, but it is not severe.
+
+Overall, the diagnostic plot does not suggest major violations of model assumptions, supporting the adequacy of the Negative Binomial model.
+
+```{r}
+
+qqnorm(residuals(glm_nb, type = "deviance"),
+       main = "QQ Plot of Deviance Residuals")
+qqline(residuals(glm_nb, type = "deviance"), col = "darkgreen")
+
+```
+
+The QQ plot of deviance residuals shows that the central residuals align reasonably well with the theoretical normal line, indicating approximate normality in the bulk of the data.
+
+However, noticeable deviations are observed at the tails, particularly on the upper end. This suggests the presence of heavy tails in the residual distribution, potentially caused by outliers or overdispersion.
+
+Overall, while the residuals are not perfectly normal—which is expected in count models like Negative Binomial—the pattern does not raise major concerns about model misspecification.
+
+```{r}
+plot(cooks.distance(glm_nb),
+     type = "h",
+     main = "Cook's Distance",
+     ylab = "Cook's Distance")
+abline(h = 4/length(glm_nb$fitted.values), col = "red", lty = 2)
+
+```
+
+## Cook's Distance (Influence Diagnostics)
+
+The Cook's Distance plot shows whether any individual data points have a big influence on our model.
+
+In this case, most of the points have very low values, meaning they do not strongly affect the model. This is a good sign — it suggests our model is stable and not overly influenced by just a few observations.
+
+However, there are a few spikes that go above the red dashed line. These points might have more influence and could be important to look at more closely. They might be special cases, unusual records, or even possible errors.
+
+Overall, the model looks reliable, but it's a good idea to double-check the few points with higher Cook’s distance just to be sure.
+
+## Model Interpretation
+
+```{r}
+# Confidence intervals
+confint(glm_nb)
+
+# Exponentiated coefficients
+exp(coef(glm_nb))
+```
+
 
 ## Model Fit: Predicted vs Actual Values
 

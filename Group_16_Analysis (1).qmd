@@ -364,10 +364,10 @@ If overdispersion is suspected (variance \> mean), we can try a negative binomia
 ```{r}
 library(MASS)
 
+
 glm_nb <- glm.nb(time_at_shelter ~ animal_type + month + year +
                  intake_type + outcome_type + chip_status,
                  data = df)
-
 
 summary(glm_nb)
 
@@ -389,12 +389,17 @@ df$month <- as.numeric(as.character(df$month))
 ```
 
 ```{r}
-df$season <- cut(df$month,
-                 breaks = c(0, 3, 6, 9, 12),
-                 labels = c("Winter", "Spring", "Summer", "Fall"),
-                 include.lowest = TRUE)
-df$season <- as.factor(df$season)
+# Assign season
+df$season <- case_when(
+  df$month %in% c(3, 4, 5)  ~ "Spring",
+  df$month %in% c(6, 7, 8)  ~ "Summer",
+  df$month %in% c(9, 10, 11) ~ "Fall",
+  df$month %in% c(12, 1, 2) ~ "Winter",
+  TRUE ~ NA_character_
+)
 
+# Convert to factor
+df$season <- as.factor(df$season)
 
 # Negative Binomial with season
 library(MASS)
@@ -451,7 +456,6 @@ comparison_table %>%
 Although the model with interaction terms achieved a slightly lower AIC (7973.82), the difference compared to the base model (7984.90) is relatively small and not practically significant.
 
 Given this, and in the interest of maintaining a simpler and more interpretable model, we selected the original Negative Binomial model as our final model.
-
 
 ### Interaction Effects
 
@@ -547,6 +551,37 @@ A few larger residuals are observed, which may indicate the presence of outliers
 
 Overall, the diagnostic plot does not suggest major violations of model assumptions, supporting the adequacy of the Negative Binomial model.
 
+## Histogram of Residuals with Normal Curve
+
+```{r}
+# Extract Pearson residuals
+res <- residuals(glm_nb, type = "deviance")
+
+# Plot histogram of residuals
+hist(res, 
+     breaks = 30,
+     freq = FALSE, 
+     col = "lightblue", 
+     main = "Histogram of Residuals with Normal Curve", 
+     xlab = "Residuals")
+
+# Overlay normal density curve
+curve(dnorm(x, mean = mean(res), sd = sd(res)), 
+      col = "red", 
+      lwd = 2, 
+      add = TRUE)
+```
+
+## Interpretation of Histogram with Normal Curve (Deviance Residuals)
+
+The histogram shows the distribution of deviance residuals with a normal curve overlay.
+
+The residuals are roughly centered around zero and resemble a bell-shaped curve.
+
+This indicates that the residuals are approximately normally distributed.
+
+The shape suggests that the model fits the data reasonably well and there are no major violations of distributional assumptions.
+
 ```{r}
 
 qqnorm(residuals(glm_nb, type = "deviance"),
@@ -589,7 +624,6 @@ confint(glm_nb)
 # Exponentiated coefficients
 exp(coef(glm_nb))
 ```
-
 
 ## Model Fit: Predicted vs Actual Values
 

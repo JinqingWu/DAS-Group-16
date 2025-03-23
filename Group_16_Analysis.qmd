@@ -138,11 +138,11 @@ df %>%
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-· The distribution of Time_at_Shelter tends to be short-term, and most animals stay in shelters for a short time.
+• Certain outcomes (such as being adopted) may be associated with a shorter stay.
 
-· Right-sided distribution, indicating that most animals will have final results quickly, but there are still some animals that stay longer.
+• Other outcomes (e.g. long-term foster care, inability to place) may result in longer stays.
 
-· The KDE curve shows partial peaks, and there may be some key factors that affect residence time.
+• The reasons for these effects need to be further explored in context.
 
 ## Time at Shelter by Chip Status
 
